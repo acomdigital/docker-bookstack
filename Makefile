@@ -1,4 +1,4 @@
-DOCKER_RELEASE_REG=solidnerd
+DOCKER_RELEASE_REG=marcode79
 DOCKER_IMAGE=bookstack
 DOCKER_IMAGE_DEV=${DOCKER_IMAGE}-dev
 DOCKER_INTERNAL_TAG := $(shell git rev-parse --short HEAD)

@@ -4,12 +4,12 @@ set -e
 echoerr() { echo "$@" 1>&2; }
 
 # Split out host and port from DB_HOST env variable
-IFS=":" read -r DB_HOST_NAME DB_PORT <<< "$DB_HOST"
+IFS=":" read -r DB_HOST_NAME DB_PORT <<<"$DB_HOST"
 DB_PORT=${DB_PORT:-3306}
 
 if [ ! -f "$BOOKSTACK_HOME/.env" ]; then
   if [[ "${DB_HOST}" ]]; then
-  cat > "$BOOKSTACK_HOME/.env" <<EOF
+    cat >"$BOOKSTACK_HOME/.env" <<EOF
       # Environment
       APP_ENV=production
       APP_DEBUG=${APP_DEBUG:-false}
@@ -62,6 +62,29 @@ if [ ! -f "$BOOKSTACK_HOME/.env" ]; then
       # External services such as Gravatar
       DISABLE_EXTERNAL_SERVICES=${DISABLE_EXTERNAL_SERVICES:-false}
 
+      # Authentication method to use
+      # Can be 'standard', 'ldap' or 'saml2'
+      AUTH_METHOD=${AUTH_METHOD:-standard}
+
+      # SAML authentication
+      SAML2_NAME=${SAML2_NAME:-SSO}
+      SAML2_EMAIL_ATTRIBUTE=${SAML2_EMAIL_ATTRIBUTE:-email}
+      SAML2_DISPLAY_NAME_ATTRIBUTES=${SAML2_DISPLAY_NAME_ATTRIBUTES:-username}
+      SAML2_EXTERNAL_ID_ATTRIBUTE=${SAML2_EXTERNAL_ID_ATTRIBUTE:-null}
+      SAML2_IDP_ENTITYID=${SAML2_IDP_ENTITYID:-null}
+      SAML2_IDP_SSO=${SAML2_IDP_SSO:-null}
+      SAML2_IDP_SLO=${SAML2_IDP_SLO:-null}
+      SAML2_IDP_x509=${SAML2_IDP_x509:-null}
+      SAML2_ONELOGIN_OVERRIDES=${SAML2_ONELOGIN_OVERRIDES:-null}
+      SAML2_DUMP_USER_DETAILS=${SAML2_DUMP_USER_DETAILS:-false}
+      SAML2_AUTOLOAD_METADATA=${SAML2_AUTOLOAD_METADATA:-false}
+
+      # SAML group sync configuration
+      # Refer to https://www.bookstackapp.com/docs/admin/saml2-auth/
+      SAML2_USER_TO_GROUPS=${SAML2_USER_TO_GROUPS:-false}
+      SAML2_GROUP_ATTRIBUTE=${SAML2_GROUP_ATTRIBUTE:-group}
+      SAML2_REMOVE_FROM_GROUPS=${SAML2_REMOVE_FROM_GROUPS:-false}
+
       # LDAP Settings
       LDAP_SERVER=${LDAP_SERVER:-false}
       LDAP_BASE_DN=${LDAP_BASE_DN:-false}
@@ -79,11 +102,11 @@ if [ ! -f "$BOOKSTACK_HOME/.env" ]; then
       MAIL_ENCRYPTION=${MAIL_ENCRYPTION:-null}
       # URL used for social login redirects, NO TRAILING SLASH
 EOF
-sed -ie "s/single/errorlog/g" app/Config/app.php
-    else
-        echo >&2 'error: missing DB_HOST environment variable'
-        exit 1
-    fi
+    sed -ie "s/single/errorlog/g" app/Config/app.php
+  else
+    echo >&2 'error: missing DB_HOST environment variable'
+    exit 1
+  fi
 fi
 
 echoerr "wait-for-db: waiting for ${DB_HOST_NAME}:${DB_PORT}"
@@ -108,7 +131,6 @@ composer install
 php artisan key:generate
 
 php artisan migrate --force
-
 
 echo "Setting folder permissions for uploads"
 chown -R www-data:www-data public/uploads && chmod -R 775 public/uploads
