@@ -1,38 +1,47 @@
-FROM php:7.2-apache-stretch
+# Adapted from https://github.com/solidnerd/docker-bookstack
+FROM php:7.4-apache-buster
 
-ENV BOOKSTACK=BookStack \
-    BOOKSTACK_VERSION=0.29.3 \
-    BOOKSTACK_HOME="/var/www/bookstack"
+ENV BOOKSTACK_VERSION=0.31.6 \
+    COMPOSER_VERSION=1.10.16
 
-RUN apt-get update && apt-get install -y --no-install-recommends git zlib1g-dev libfreetype6-dev libjpeg62-turbo-dev libmcrypt-dev libpng-dev wget libldap2-dev libtidy-dev libxml2-dev fontconfig ttf-freefont wkhtmltopdf tar curl \
-    && docker-php-ext-install dom pdo pdo_mysql zip tidy  \
+RUN apt-get update && apt-get install -y --no-install-recommends git zlib1g-dev libfreetype6-dev libjpeg62-turbo-dev libmcrypt-dev libpng-dev wget libldap2-dev libtidy-dev libxml2-dev fontconfig fonts-freefont-ttf wkhtmltopdf tar curl libzip-dev unzip \
+    && docker-php-ext-install -j$(nproc) dom pdo pdo_mysql zip \
     && docker-php-ext-configure ldap \
-    && docker-php-ext-install ldap \
-    && docker-php-ext-configure gd --with-freetype-dir=usr/include/ --with-jpeg-dir=/usr/include/ \
-    && docker-php-ext-install gd \
-    && cd /var/www && curl -sS https://getcomposer.org/installer | php \
-    && mv /var/www/composer.phar /usr/local/bin/composer \
-    && wget https://github.com/BookStackApp/BookStack/archive/v${BOOKSTACK_VERSION}.tar.gz -O ${BOOKSTACK}.tar.gz \
-    && tar -xf ${BOOKSTACK}.tar.gz && mv BookStack-${BOOKSTACK_VERSION} ${BOOKSTACK_HOME} && rm ${BOOKSTACK}.tar.gz  \
-    && cd $BOOKSTACK_HOME && composer install \
-    && chown -R www-data:www-data $BOOKSTACK_HOME \
+    && docker-php-ext-install -j$(nproc) ldap \
+    && docker-php-ext-configure gd --with-freetype=usr/include/ --with-jpeg=/usr/include/ \
+    && docker-php-ext-install -j$(nproc) gd \
+    && docker-php-source delete \
     && apt-get -y autoremove \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /var/tmp/* /etc/apache2/sites-enabled/000-*.conf
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/cache/* /var/tmp/* /etc/apache2/sites-enabled/000-*.conf \
+    && wget https://github.com/BookStackApp/BookStack/archive/v${BOOKSTACK_VERSION}.tar.gz -O bookstack.tar.gz \
+    && tar -xf bookstack.tar.gz && mv BookStack-${BOOKSTACK_VERSION} /var/www/bookstack && rm bookstack.tar.gz  \
+    && cd /tmp && curl -sS https://getcomposer.org/installer | php -- --version=${COMPOSER_VERSION} \
+    && cd /var/www/bookstack && /tmp/composer.phar install \
+    && rm -rf /tmp/composer.phar /root/.composer \
+    && chown -R www-data:www-data /var/www/bookstack \
+    && a2enmod rewrite \
+    && sed -i "s/Listen 80/Listen 8080/" /etc/apache2/ports.conf \
+    && rm -f /etc/apache2/sites-available/*.conf
+
+COPY bookstack.conf /etc/apache2/sites-enabled/000-default.conf
 
 COPY php.ini /usr/local/etc/php/php.ini
-COPY bookstack.conf /etc/apache2/sites-enabled/bookstack.conf
-RUN a2enmod rewrite
+COPY docker-entrypoint.sh /bin/docker-entrypoint.sh
 
-COPY docker-entrypoint.sh /
+WORKDIR /var/www/bookstack 
 
-WORKDIR $BOOKSTACK_HOME
+# www-data
+USER 33
 
-EXPOSE 80
+VOLUME ["/var/www/bookstack/public/uploads","/var/www/bookstack/storage/uploads"]
 
-VOLUME ["$BOOKSTACK_HOME/public/uploads","$BOOKSTACK_HOME/storage/uploads"]
+ENV RUN_APACHE_USER=www-data \
+    RUN_APACHE_GROUP=www-data
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+EXPOSE 8080
+
+ENTRYPOINT ["/bin/docker-entrypoint.sh"]
 
 ARG BUILD_DATE
 ARG VCS_REF
