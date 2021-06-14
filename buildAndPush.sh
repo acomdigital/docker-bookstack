@@ -1,3 +1,4 @@
 #!/bin/bash
-docker build -t marcode79/bookstack:0.31.6 .
-docker push marcode79/bookstack:0.31.6
+docker pull php:7.4-apache-buster
+docker build -t marcode79/bookstack:21.05.1-ee .
+docker push marcode79/bookstack:21.05.1-ee
