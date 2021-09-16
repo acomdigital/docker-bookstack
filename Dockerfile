@@ -1,7 +1,7 @@
 # Adapted from https://github.com/solidnerd/docker-bookstack
 FROM php:7.4-apache-buster
 
-ENV BOOKSTACK_VERSION=21.05.2 \
+ENV BOOKSTACK_VERSION=21.08.3 \
     COMPOSER_VERSION=1.10.16
 
 COPY current-theme.patch /
