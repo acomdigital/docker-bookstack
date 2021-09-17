@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git zlib1g-dev 
     && cd /tmp && curl -sS https://getcomposer.org/installer | php -- --version=${COMPOSER_VERSION} \
     && cd /var/www/bookstack && /tmp/composer.phar install \
     && rm -rf /tmp/composer.phar /root/.composer \
-    && git apply -p2 < /current-theme.patch \
+    && git apply --whitespace=fix -p2 < /current-theme.patch \
     && chown -R www-data:www-data /var/www/bookstack \
     && a2enmod rewrite \
     && sed -i "s/Listen 80/Listen 8080/" /etc/apache2/ports.conf \
